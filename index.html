@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini CRM Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; background: #f4f6f9; }
+    h1 { color: #333; }
+    .container { max-width: 650px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    input, button { display: block; width: 100%; margin-bottom: 12px; padding: 10px; box-sizing: border-box; }
+    button { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+    button:hover { background: #0056b3; }
+    .lead-card { background: #eef2f5; padding: 15px; margin-top: 12px; border-radius: 6px; }
+    .lead-actions { margin-top: 10px; display: flex; gap: 10px; }
+    .btn-status { background: #28a745; padding: 6px 12px; font-size: 13px; width: auto; }
+    .btn-delete { background: #dc3545; padding: 6px 12px; font-size: 13px; width: auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Mini CRM Dashboard</h1>
+    
+    <form id="leadForm">
+      <input type="text" id="leadName" placeholder="Name" required />
+      <input type="email" id="leadEmail" placeholder="Email" required />
+      <input type="text" id="leadPhone" placeholder="Phone Number" />
+      <button type="submit">Add Lead</button>
+    </form>
+
+    <h2>All Leads</h2>
+    <div id="leadsList">Loading leads...</div>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:5001/api/leads';
+
+    async function fetchLeads() {
+      try {
+        const res = await fetch(API_URL);
+        const leads = await res.json();
+        const listDiv = document.getElementById('leadsList');
+        listDiv.innerHTML = '';
+        
+        if (leads.length === 0) {
+          listDiv.innerHTML = '<p>No leads found.</p>';
+          return;
+        }
+
+        leads.forEach(lead => {
+          listDiv.innerHTML += `
+            <div class="lead-card">
+              <strong>${lead.name}</strong> — <em>Status: ${lead.status}</em><br>
+              Email: ${lead.email}<br>
+              Phone: ${lead.phone || 'N/A'}
+              <div class="lead-actions">
+                <button class="btn-status" onclick="updateStatus('${lead._id}', 'Contacted')">Mark Contacted</button>
+                <button class="btn-status" style="background:#6c757d;" onclick="updateStatus('${lead._id}', 'Closed')">Mark Closed</button>
+                <button class="btn-delete" onclick="deleteLead('${lead._id}')">Delete</button>
+              </div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        document.getElementById('leadsList').innerHTML = '<p style="color:red;">Failed to fetch leads</p>';
+      }
+    }
+
+    async function updateStatus(id, newStatus) {
+      await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      fetchLeads();
+    }
+
+    async function deleteLead(id) {
+      if (confirm('Kya aap is lead ko delete karna chahte ho?')) {
+        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        fetchLeads();
+      }
+    }
+
+    document.getElementById('leadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('leadName').value.trim();
+      const email = document.getElementById('leadEmail').value.trim();
+      const phone = document.getElementById('leadPhone').value.trim();
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone })
+      });
+
+      if (response.ok) {
+        document.getElementById('leadForm').reset();
+        fetchLeads();
+      }
+    });
+
+    fetchLeads();
+  </script>
+</body>
+</html>
